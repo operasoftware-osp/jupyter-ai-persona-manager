@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING
 
 from importlib_metadata import entry_points
 from jupyterlab_chat.models import Message, NewMessage, User
-from traitlets import Unicode
+from traitlets import List, Unicode
 from traitlets.config import LoggingConfigurable
 
 from .base_persona import BasePersona
@@ -60,6 +60,14 @@ class PersonaManager(LoggingConfigurable):
         "will automatically reply in a single-user chats until another "
         "persona is `@`-mentioned. "
         "Defaults to: 'jupyter-ai-personas::jupyter_ai::JupyternautPersona'. ",
+        allow_none=True,
+        config=True,
+    )
+
+    blocked_personas = List(
+        Unicode(),
+        default=None,
+        help="List of personas that shouldn't be loaded.",
         allow_none=True,
         config=True,
     )
@@ -158,6 +166,11 @@ class PersonaManager(LoggingConfigurable):
                 # Load a persona class from each entry point
                 persona_class = persona_ep.load()
                 assert issubclass(persona_class, BasePersona)
+                if self.blocked_personas and persona_ep.value in self.blocked_personas:
+                    self.log.info(
+                        f"  - Not loading persona class '{persona_ep.name}' from '{persona_ep.value}', because it's on the blocklist."
+                    )
+                    continue
                 persona_classes.append(
                     {
                         "module": persona_ep.name,
